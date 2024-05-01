@@ -28,9 +28,13 @@ def map_range(x, in_min, in_max, out_min, out_max):
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--mode', default='hand', help=' Select mode: hand / body / holistic')
 parser.add_argument('-c', '--camera', default='-1', help=' Input camera index')
+parser.add_argument('-o', '--disable-mouse', default='0', help=' Disable Mouse Camera')
+parser.add_argument('-a', '--disable-ai', default='0', help=' Disable AI')
 args = parser.parse_args()
 mode = args.mode
 camera = args.camera
+disablemouse = args.disable_mouse
+disableai = args.disable_ai
 
 # Start video capture
 cap = False
@@ -55,30 +59,32 @@ intrin = {
     'height': img_height,
 }
 
+if disableai != '1':
 # Load mediapipe and display class
-if mode=='hand':
-    pipe = MediaPipeHand(static_image_mode=False, max_num_hands=2, intrin=intrin)
-    disp = DisplayHand(draw3d=True, draw_camera=True, max_num_hands=2, intrin=intrin)
-elif mode=='body':
-    # Note: As of version 0.8.3 3D joint estimation is only available in full body mode
-    pipe = MediaPipeBody(static_image_mode=False, model_complexity=1, intrin=intrin,  enable_segmentation=False)
-    disp = DisplayBody(draw3d=False, draw_camera=True, intrin=intrin)
-elif mode=='holistic':
-    # Note: As of version 0.8.3 3D joint estimation is only available in full body mode
-    pipe = MediaPipeHolistic(static_image_mode=False, model_complexity=1, intrin=intrin)
-    disp = DisplayHolistic(draw3d=True, draw_camera=True, intrin=intrin)
+    if mode=='hand':
+        pipe = MediaPipeHand(static_image_mode=False, max_num_hands=2, intrin=intrin)
+        disp = DisplayHand(draw3d=True, draw_camera=True, max_num_hands=2, intrin=intrin)
+    elif mode=='body':
+        # Note: As of version 0.8.3 3D joint estimation is only available in full body mode
+        pipe = MediaPipeBody(static_image_mode=False, model_complexity=1, intrin=intrin,  enable_segmentation=False)
+        disp = DisplayBody(draw3d=False, draw_camera=True, intrin=intrin)
+    elif mode=='holistic':
+        # Note: As of version 0.8.3 3D joint estimation is only available in full body mode
+        pipe = MediaPipeHolistic(static_image_mode=False, model_complexity=1, intrin=intrin)
+        disp = DisplayHolistic(draw3d=True, draw_camera=True, intrin=intrin)
 
 # log = False
 # count = 0
 # cap.set(cv2.CAP_PROP_POS_FRAMES, 900)
     
 # Load mediapipe class
-pipegest = MediaPipeHand(static_image_mode=False, max_num_hands=1, model_complexity=1)
+if disablemouse != '1' or disableai != '1' :
+    pipegest = MediaPipeHand(static_image_mode=False, max_num_hands=1, model_complexity=1)
 
-# Load display class
-dispgest = DisplayHand(max_num_hands=1)
-# Load gesture recognition class
-gest = GestureRecognition('eval')
+    # Load display class
+    dispgest = DisplayHand(max_num_hands=1)
+    # Load gesture recognition class
+    gest = GestureRecognition('eval')
 mousedown = False
 prev_time = time.time()
 def start():
@@ -88,16 +94,13 @@ def start():
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0) # Loop back
             ret, img = cap.read()
 
-        # Flip image for 3rd person view
-        img = cv2.flip(img, 1)
-
         # To improve performance, optionally mark image as not writeable to pass by reference
         img.flags.writeable = False
-
+        if disablemouse != '1' or disableai != '1':
         # Feedforward to extract keypoint
-        paramgest = pipegest.forward(img)
-        if (paramgest[0]['class'] is not None):
-            paramgest[0]['gesture'] = gest.eval(paramgest[0]['angle'])
+            paramgest = pipegest.forward(img)
+            if (paramgest[0]['class'] is not None):
+                paramgest[0]['gesture'] = gest.eval(paramgest[0]['angle'])
 
         img.flags.writeable = True
 
@@ -116,9 +119,9 @@ def start():
 
         # To improve performance, optionally mark image as not writeable to pass by reference
         img.flags.writeable = False
-
+        if disableai != '1':
         # Feedforward to extract keypoint
-        param = pipe.forward(img)
+            param = pipe.forward(img)
 
         # Compute FPS
         # curr_time = time.time()
@@ -133,29 +136,32 @@ def start():
         # prev_time = curr_time    
 
         img.flags.writeable = True
+        if disablemouse != '1' or disableai != '1':
+            x = int(param['keypt'][19,0])
+            y = int(param['keypt'][19,1])
+            # print(type(img_width))
+            # print(type(pg.size().width))
+            xx = map_range(int(x), int(0), int(img_width), int(0), int(pg.size().width))
+            yy = map_range(int(y), int(0), int(img_height), int(0), int(pg.size().height))
+            # print(xx)
+            # print(yy)
+            pg.moveTo(xx, yy)
+            if paramgest[0]['gesture'] is not None:
+                if(paramgest[0]['gesture'].lower() == "select"):
+                    if mousedown is not True:
+                        mousedown = True
+                        pg.mouseDown()
 
-        x = int(param['keypt'][19,0])
-        y = int(param['keypt'][19,1])
-        # print(type(img_width))
-        # print(type(pg.size().width))
-        xx = map_range(int(x), int(0), int(img_width), int(0), int(pg.size().width))
-        yy = map_range(int(y), int(0), int(img_height), int(0), int(pg.size().height))
-        # print(xx)
-        # print(yy)
-        pg.moveTo(xx, yy)
-        if paramgest[0]['gesture'] is not None:
-            if(paramgest[0]['gesture'].lower() == "select"):
-                if mousedown is not True:
-                    mousedown = True
-                    pg.mouseDown()
-
-            else:
-                mousedown = False
-                pg.mouseUp()
-        # Display keypoint
-        cv2.imshow('img 2D', disp.draw2d(img, param))
-        cv2.namedWindow('img 2D', cv2.WINDOW_NORMAL)
+                else:
+                    mousedown = False
+                    pg.mouseUp()
+            # Display keypoint
+        cv2.namedWindow('img 2D', cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty('img 2D', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        if disableai != '1':
+            cv2.imshow('img 2D', disp.draw2d(img, param))
+        else:
+            cv2.imshow('img 2D', img)
         # Display 3D
         # disp.draw3d(param, img)
         # disp.vis.update_geometry(None)
@@ -178,6 +184,8 @@ def start():
         #     print('Log', log)
 # cProfile.run('start()','profileing')
 start()
-pipe.pipe.close()
-pipegest.pipe.close()
+if disableai != '1':
+    pipe.pipe.close()
+if disablemouse != '1' or disableai != '1':
+    pipegest.pipe.close()
 cap.release()
