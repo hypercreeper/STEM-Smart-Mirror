@@ -9,10 +9,10 @@
             "name": "Python Debugger: AI program with camera index 1",
             "type": "debugpy",
             "request": "launch",
-            "program": "d:\\python\\google-mediapipe-main\\code\\08_skeleton_3D.py",
+            "program": "\"C:\\Users\\hyper\\Desktop\\Python 3.10\\google-mediapipe-main\\code\\08_skeleton_3D.py\"",
             "console": "integratedTerminal",
-            "args": "-m body -c 1",
-            "cwd": "d:\\python\\google-mediapipe-main\\code"
+            "args": "-m body -c 0 -a 0 -o 1",
+            "cwd": "C:\\Users\\hyper\\Desktop\\Python 3.10\\google-mediapipe-main\\code"
         }
     ]
 }

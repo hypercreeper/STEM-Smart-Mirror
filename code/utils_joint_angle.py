@@ -7,7 +7,7 @@
 
 import cv2
 import numpy as np
-
+import os
 
 def convert_relative_to_actual_3d_joint_(param, intrin):
     # Adapted from Iqbal et al.

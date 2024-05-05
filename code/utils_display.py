@@ -5,6 +5,8 @@
 print("start utils_display")
 print("import cv2")
 import cv2
+print("import Pillow")
+from PIL import Image
 print("import numpy")
 import numpy as np
 print("import open3d")
@@ -213,7 +215,7 @@ class DisplayFaceMask:
         # .obj file adapted from https://github.com/google/mediapipe/tree/master/mediapipe/modules/face_geometry/data
         # self.mesh = o3d.io.read_triangle_mesh('../data/canonical_face_model.obj') # Seems like Open3D ver 0.11.2 have some issue with reading .obj https://github.com/intel-isl/Open3D/issues/2614
         self.mesh = o3d.io.read_triangle_mesh('../data/canonical_face_model.ply')        
-        self.mesh.paint_uniform_color([255/255, 172/255, 150/255]) # Skin color
+        self.mesh.paint_uniform_color([255/255, 0/255, 0/255]) # Skin color
         self.mesh.compute_vertex_normals()
         self.mesh.scale(0.01, [0,0,0])
 
@@ -737,10 +739,10 @@ class DisplayBody:
 
             # Set camera view
             ctr = self.vis.get_view_control()
-            ctr.set_up([0,-1,0]) # Set up as -y axis
-            ctr.set_front([0,0,-1]) # Set to looking towards -z axis
-            ctr.set_lookat([0,0,0]) # Set to center of view
-            ctr.set_zoom(1.5)
+            ctr.set_up([ 0.070467094591145141, -0.98801669326175445, 0.13732225754039534 ]) # Set up as -y axis
+            ctr.set_front([ 0.0035892329821995703, -0.13741244685812048, -0.99050741383144825 ]) # Set to looking towards -z axis
+            ctr.set_lookat([ -0.45391503026687896, 0.2418689091271719, 1.9361854892299561 ]) # Set to center of view
+            ctr.set_zoom(0.29999999999999982)
 
             if draw_camera:
                 # Draw camera frustum
@@ -753,7 +755,31 @@ class DisplayBody:
                 self.vis.add_geometry(self.mesh_img)
                 # Reset camera view
                 self.camera.reset_view()
+    def clearAllExtObj(self):
+        # Draw world reference frame
+        self.vis.clear_geometries()
+        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)
 
+        # Add geometry to visualize
+        self.vis.add_geometry(frame)
+        self.vis.add_geometry(self.pcd)
+        self.vis.add_geometry(self.bone)
+
+        # Set camera view
+        ctr = self.vis.get_view_control()
+        ctr.set_up([ 0.070467094591145141, -0.98801669326175445, 0.13732225754039534 ]) # Set up as -y axis
+        ctr.set_front([ 0.0035892329821995703, -0.13741244685812048, -0.99050741383144825 ]) # Set to looking towards -z axis
+        ctr.set_lookat([ -0.45391503026687896, 0.2418689091271719, 1.9361854892299561 ]) # Set to center of view
+        ctr.set_zoom(0.29999999999999982)
+        self.camera = DisplayCamera(self.vis, self.intrin)
+        frustum = self.camera.create_camera_frustum(depth=[3,6])
+        # Draw 2D image plane in 3D space
+        self.mesh_img = self.camera.create_mesh_img(depth=6)
+        # Add geometry to visualize
+        self.vis.add_geometry(frustum)
+        self.vis.add_geometry(self.mesh_img)
+            # Reset camera view
+        self.camera.reset_view()
     def draw_line(self, img, pt1, pt2, color, thickness):
         x1, y1, x2, y2 = *pt1, *pt2
         theta = np.pi - np.arctan2(y1 - y2, x1 - x2)
@@ -766,48 +792,71 @@ class DisplayBody:
             [x2 + dx, y2 + dy]
         ]
         cv2.fillPoly(img, [np.array(pts)], color)
-    def draw2d(self, img, param, draw_overlay=False):
+    def draw2d(self, img, param, overlay_shirt_img: Image = None, overlay_pants_img: Image = None, offset = 20, draw_overlay=False):
         img_height, img_width, _ = img.shape
         # point 12, 11: shoulders
         # point 24, 23: Torso 
         # 12-14-16: Left Arm
         # 11-13-15: Right Arm
         p = param
-        if p['detect']:
-            # Loop through keypoint for body
-            for i in range(33):
-                x = int(p['keypt'][i,0])
-                y = int(p['keypt'][i,1])
-                if x>0 and y>0 and x<img_width and y<img_height:
-                    # Draw skeleton
-                    start = p['keypt'][self.ktree[i],:]
-                    x_ = int(start[0])
-                    y_ = int(start[1])
-                    if x_>0 and y_>0 and x_<img_width and y_<img_height:
-                        cv2.line(img, (x_, y_), (x, y), self.color[i], 2)
+        # if p['detect']:
+        #     # Loop through keypoint for body
+        #     for i in range(33):
+        #         x = int(p['keypt'][i,0])
+        #         y = int(p['keypt'][i,1])
+        #         if x>0 and y>0 and x<img_width and y<img_height:
+        #             # Draw skeleton
+        #             start = p['keypt'][self.ktree[i],:]
+        #             x_ = int(start[0])
+        #             y_ = int(start[1])
+        #             if x_>0 and y_>0 and x_<img_width and y_<img_height:
+        #                 cv2.line(img, (x_, y_), (x, y), self.color[i], 2)
 
-                    # Draw keypoint
-                    cv2.circle(img, (x, y), 3, self.color[i], -1)
+        #             # Draw keypoint
+        #             cv2.circle(img, (x, y), 3, self.color[i], -1)
 
-                    # Number keypoint
-                    cv2.putText(img, '%d' % (i), (x, y), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color[i])
+        #             # Number keypoint
+        #             cv2.putText(img, '%d' % (i), (x, y), 
+        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color[i])
 
                     # Label visibility and presence
                     # cv2.putText(img, '%.1f, %.1f' % (p['visible'][i], p['presence'][i]),
                     #     (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color[i])
         # img = np.zeros((img.shape[0], img.shape[1], 3), dtype = np.uint8)
         # img = 255* img
+        # print("getting keypoints")
         x = int(p['keypt'][12,0])
         y = int(p['keypt'][12,1])
-        x2 = int(p['keypt'][23,0])
-        y2 = int(p['keypt'][23,1])
-        cv2.rectangle(img, (x,y), (x2+20, y2), self.color[3], -1)
-        self.draw_line(img, (int(p['keypt'][12,0]), int(p['keypt'][12,1])), (int(p['keypt'][14,0]), int(p['keypt'][14,1])), self.color[3], 50)
-        # self.draw_line(img, (int(p['keypt'][14,0]), int(p['keypt'][14,1])), (int(p['keypt'][16,0]), int(p['keypt'][16,1])), self.color[3], 50)
-        self.draw_line(img, (int(p['keypt'][11,0]), int(p['keypt'][11,1])), (int(p['keypt'][13,0]), int(p['keypt'][13,1])), self.color[3], 50)
-        # self.draw_line(img, (int(p['keypt'][13,0]), int(p['keypt'][13,1])), (int(p['keypt'][15,0]), int(p['keypt'][15,1])), self.color[3], 50)
-        # Label fps
+        x2 = int(p['keypt'][11,0])
+        y2 = int(p['keypt'][11,1])
+        x3 = int(p['keypt'][23,0])
+        y3 = int(p['keypt'][23,1])
+        x4 = int(p['keypt'][24,0])
+        y4 = int(p['keypt'][24,1])
+        x5 = int(p['keypt'][27,0])
+        y5 = int(p['keypt'][27,1])
+        
+        if p["detect"]:
+            base_img = Image.fromarray(img)
+            overlay_shirt_img = overlay_shirt_img.convert('RGBA')
+            if x2-x+offset > 0 and y4-y+offset > 0:
+                overlay_shirt_img = overlay_shirt_img.resize((x2-x+offset,y4-y+offset))
+            base_img.paste(overlay_shirt_img, (int(x-offset/2), y-offset+10), overlay_shirt_img)
+            img = np.asarray(base_img)
+
+            base_img = Image.fromarray(img)
+            overlay_pants_img = overlay_pants_img.convert('RGBA')
+            if x3-x4+offset > 0 and y5-y3 > 0:
+                overlay_pants_img = overlay_pants_img.resize((x3-x4+offset,y5-y3))
+            base_img.paste(overlay_pants_img, (int(x4-offset/2), y4-offset+20), overlay_pants_img)
+            img = np.asarray(base_img)
+
+            
+            # self.draw_line(img, (int(p['keypt'][12,0]), int(p['keypt'][12,1])), (int(p['keypt'][14,0]), int(p['keypt'][14,1])), self.color[3], 50)
+            # self.draw_line(img, (int(p['keypt'][14,0]), int(p['keypt'][14,1])), (int(p['keypt'][16,0]), int(p['keypt'][16,1])), self.color[3], 50)
+            # self.draw_line(img, (int(p['keypt'][11,0]), int(p['keypt'][11,1])), (int(p['keypt'][13,0]), int(p['keypt'][13,1])), self.color[3], 50)
+            # self.draw_line(img, (int(p['keypt'][13,0]), int(p['keypt'][13,1])), (int(p['keypt'][15,0]), int(p['keypt'][15,1])), self.color[3], 50)
+            # Label fps
         if p['fps']>0:
             cv2.putText(img, 'FPS: %.1f' % (p['fps']),
                 (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)   
