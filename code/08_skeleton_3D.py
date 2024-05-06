@@ -165,9 +165,8 @@ def start():
 
         # To improve performance, optionally mark image as not writeable to pass by reference
         img.flags.writeable = False
-        if disableai != '1':
         # Feedforward to extract keypoint
-            param = pipe.forward(img)
+        param = pipe.forward(img)
 
         # Compute FPS
         # curr_time = time.time()
