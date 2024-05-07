@@ -46,7 +46,7 @@ from utils_mediapipe import MediaPipeHand, MediaPipeBody
 from utils_mediapipe import MediaPipeHand
 from utils_joint_angle import GestureRecognition
 import pyautogui as pg
-pg.FAILSAFE = True
+pg.FAILSAFE = False
 # import cProfile
 
 def map_range(x, in_min, in_max, out_min, out_max):
@@ -273,12 +273,12 @@ def stop_ai_app():
     disableai = '1'
     return 'Stopping...'
 @app.route('/startmouse')
-def start_ai_app():
+def start_mouse():
     global disableai, disablemouse
     disablemouse = '0'
     return 'Starting...'
 @app.route('/stopmouse')
-def stop_ai_app():
+def stop_mouse():
     global disableai, disablemouse
     disablemouse = '1'
     return 'Stopping...'
