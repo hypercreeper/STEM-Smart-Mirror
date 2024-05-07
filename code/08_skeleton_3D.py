@@ -46,6 +46,7 @@ from utils_mediapipe import MediaPipeHand, MediaPipeBody
 from utils_mediapipe import MediaPipeHand
 from utils_joint_angle import GestureRecognition
 import pyautogui as pg
+pg.FAILSAFE = True
 # import cProfile
 
 def map_range(x, in_min, in_max, out_min, out_max):
@@ -130,7 +131,7 @@ garmentUpdated = False
 offset = 0
 prev_time = time.time()
 def start():
-    global previous_degree, selectedGarment, garmentUpdated, clothing_model, loaded_model_paths, disp, loaded_images, offset
+    global previous_degree, selectedGarment, garmentUpdated, clothing_model, loaded_model_paths, disp, loaded_images, offset, mousedown
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -270,6 +271,16 @@ def start_ai_app():
 def stop_ai_app():
     global disableai, disablemouse
     disableai = '1'
+    return 'Stopping...'
+@app.route('/startmouse')
+def start_ai_app():
+    global disableai, disablemouse
+    disablemouse = '0'
+    return 'Starting...'
+@app.route('/stopmouse')
+def stop_ai_app():
+    global disableai, disablemouse
+    disablemouse = '1'
     return 'Stopping...'
 @app.route('/selectgarment')
 def select_garment():
